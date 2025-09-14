@@ -1,36 +1,46 @@
 // src/controllers/chatController.js
 
+// Importamos nuestro mapa de la guía
+const guidedTour = require('../data/guidedtour');
+
+
 // Objeto para simular nuestra base de datos por ahora
 const sessions = {};
 
 // POST /chat/guide
 exports.handleGuidedChat = (req, res) => {
-    const { sessionId } = req.body;
+    // Ahora también recibimos el ID del siguiente paso que el usuario eligió
+    const { sessionId, nextStepId } = req.body;
 
-    // Si la sesión no existe, la creamos
+    // Si la sesión no existe, la creamos.
     if (!sessions[sessionId]) {
         sessions[sessionId] = { guidedCount: 0, aiEnabled: false };
     }
-
-    // Incrementamos el contador del recorrido guiado
+    
+    // Incrementamos el contador, sin importar qué paso sea
     sessions[sessionId].guidedCount++;
 
-    const currentCount = sessions[sessionId].guidedCount;
-    let aiAvailable = false;
+    const currentSession = sessions[sessionId];
 
-    // Comprobamos si el usuario ya puede hablar con la IA
-    if (currentCount >= 5) {
-        aiAvailable = true;
-    }
+    // Determinamos qué paso enviar
+    // Si no se especifica un 'nextStepId', enviamos el inicio. Si no, buscamos el paso solicitado.
+    const step = guidedTour[nextStepId] || guidedTour['start'];
+    
+    // Comprobamos si la IA debe estar disponible
+    const aiAvailable = currentSession.guidedCount >= 5 || currentSession.aiEnabled;
 
-    console.log('Sesiones activas:', sessions); // Para que veas en la consola cómo cambia
+    console.log(`Sesión [${sessionId}]: Paso ${currentSession.guidedCount}, AI disponible: ${aiAvailable}`);
+    console.log('Sesiones activas:', sessions);
 
+    // Devolvemos el paso del guion junto con el estado de la sesión
     res.status(200).json({
-        message: `Paso del recorrido ${currentCount} registrado.`,
-        guidedCount: currentCount,
+        ...step, // Esto incluye el texto y las opciones del paso actual
+        guidedCount: currentSession.guidedCount,
         aiAvailable: aiAvailable
     });
 };
+
+// --- Las otras dos funciones (enableAiChat y handleAiChat) permanecen exactamente iguales ---
 
 // POST /chat/enable-ai
 exports.enableAiChat = (req, res) => {
@@ -42,7 +52,6 @@ exports.enableAiChat = (req, res) => {
 
     console.log(`Lead capturado: ${name}, ${email}. Enviando a Zoho y mandando Starter Pack (simulado).`);
     
-    // Marcamos la IA como habilitada para esta sesión
     sessions[sessionId].aiEnabled = true;
 
     res.status(200).json({
@@ -60,7 +69,6 @@ exports.handleAiChat = (req, res) => {
 
     console.log(`Mensaje para OpenAI: "${message}" (simulado).`);
 
-    // Simulamos una respuesta de la IA
     const aiReply = `He recibido tu mensaje: "${message}". En el futuro, te responderá la IA de OpenAI.`;
 
     res.status(200).json({ reply: aiReply });
