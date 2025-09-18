@@ -13,6 +13,7 @@ export interface GuidedResponse {
   options?: GuidedOption[];
   guidedCount: number;
   aiAvailable: boolean;
+  aiEnabled?: boolean;
 }
 
 export interface LeadData {

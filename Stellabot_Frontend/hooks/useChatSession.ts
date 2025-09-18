@@ -20,6 +20,7 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
   const [currentOptions, setCurrentOptions] = useState<{ text: string; nextStepId: string }[]>([]);
   const [guidedCount, setGuidedCount] = useState(0);
   const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
 
   const loadStep = useCallback(async (nextStepId?: string) => {
     setLoading(true); setError(null);
@@ -27,6 +28,7 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
       const data: GuidedResponse = await guide(nextStepId);
       setGuidedCount(data.guidedCount);
       setAiAvailable(data.aiAvailable);
+      setAiEnabled(!!data.aiEnabled);
       // Añadimos el texto del paso como mensaje bot (si es primer mensaje o cambia el step)
       setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, text: data.text, sender: 'bot', type: 'guided' }]);
       setCurrentOptions(data.options || []);
@@ -44,6 +46,7 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
   }, [loadStep]);
 
   const sendAiMessage = useCallback(async (text: string) => {
+    if (!aiEnabled) { setError('La IA no está habilitada aún.'); return; }
     setMessages(prev => [...prev, { id: `${Date.now()}-uai`, text, sender: 'user', type: 'ai' }]);
     setLoading(true); setError(null);
     try {
@@ -52,13 +55,14 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
     } catch (e: any) {
       setError(e.message || 'Error IA');
     } finally { setLoading(false); }
-  }, []);
+  }, [aiEnabled]);
 
   const activateAI = useCallback(async (lead: { name: string; email: string; phone?: string }) => {
     setLoading(true); setError(null);
     try {
       await enableAI(lead);
       setAiAvailable(true);
+      setAiEnabled(true);
     } catch (e: any) {
       setError(e.message || 'Error activando IA');
     } finally { setLoading(false); }
@@ -73,6 +77,7 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
     currentOptions,
     guidedCount,
     aiAvailable,
+    aiEnabled,
     selectOption,
     sendAiMessage,
     activateAI,

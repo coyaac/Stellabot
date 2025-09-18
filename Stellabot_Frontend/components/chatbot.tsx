@@ -8,10 +8,14 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, X, Send, Bot, User } from "lucide-react"
 import { useChatSession } from "@/hooks/useChatSession"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState("")
+  const [leadOpen, setLeadOpen] = useState(false)
+  const [lead, setLead] = useState({ name: '', email: '', phone: '' })
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -19,10 +23,12 @@ export function Chatbot() {
     currentOptions,
     guidedCount,
     aiAvailable,
+    aiEnabled,
     loading,
     error,
     selectOption,
     sendAiMessage,
+    activateAI,
   } = useChatSession()
 
   const handleOptionSelect = async (opt: { text: string; nextStepId: string }) => {
@@ -117,7 +123,14 @@ export function Chatbot() {
             <div ref={messagesEndRef} />
           </ScrollArea>
 
-          {aiAvailable && (
+          {!aiEnabled && aiAvailable && (
+            <div className="p-3 text-center text-[11px] text-[var(--color-text-dark,#2b2330)]/80 border-t bg-white/70">
+              <p className="mb-2">La IA está disponible. Actívala dejando tus datos.</p>
+              <Button size="sm" className="bg-gradient-to-br from-[var(--color-primary-a,#ca2ca3)] to-[var(--color-primary-b,#74456a)]" onClick={() => setLeadOpen(true)}>Activar IA</Button>
+            </div>
+          )}
+
+          {aiEnabled && (
             <div className="p-4 border-t border-[var(--color-border,#e3d9d3)] bg-[var(--color-surface-alt,#d9c5bb)]/40">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs text-[var(--color-text-dark,#2b2330)]">Modo IA habilitado. Envía tu pregunta:</p>
@@ -150,6 +163,43 @@ export function Chatbot() {
           )}
         </Card>
       )}
+
+      <Dialog open={leadOpen} onOpenChange={setLeadOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Activar IA</DialogTitle>
+            <DialogDescription>Déjanos tus datos para continuar conversando con la IA.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="lead-name">Nombre*</Label>
+              <Input id="lead-name" value={lead.name} onChange={e => setLead({ ...lead, name: e.target.value })} placeholder="Tu nombre" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="lead-email">Email*</Label>
+              <Input id="lead-email" type="email" value={lead.email} onChange={e => setLead({ ...lead, email: e.target.value })} placeholder="tu@correo.com" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="lead-phone">Teléfono</Label>
+              <Input id="lead-phone" value={lead.phone} onChange={e => setLead({ ...lead, phone: e.target.value })} placeholder="Opcional" />
+            </div>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLeadOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={!lead.name.trim() || !lead.email.trim() || loading}
+              onClick={async () => {
+                await activateAI({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                setLeadOpen(false);
+              }}
+              className="bg-gradient-to-r from-[var(--color-primary-a,#ca2ca3)] to-[var(--color-primary-b,#74456a)]"
+            >
+              {loading ? 'Activando...' : 'Activar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
