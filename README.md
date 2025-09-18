@@ -3,10 +3,6 @@ Proyecto Asistente virtual con inteligencia artificial para la pagina thestellaw
 
 first commit
 
-Aquí tienes un **One Page** para tu backend del proyecto del chatbot:
-
----
-
 # 🛠️ One Page – Backend Chatbot para **The Stella Way**
 
 ## 🎯 Objetivo
@@ -91,3 +87,125 @@ Desarrollar un **backend en Node.js** que gestione la lógica de negocio de un c
 6.Envío POST /chat/enable-ai con datos → backend: valida, guarda lead, crea contacto/ticket en Zoho, envía Starter Pack por email, marca aiEnabled = true en ChatSession.
 
 7.Usuario ya puede usar POST /chat/ai para conversar con OpenAI (historico del recorrido incluido como contexto opcional).
+
+---
+
+## 🎨 Paleta de Colores (Chatbot)
+Basado en la referencia proporcionada:
+
+| Uso | Hex | Descripción |
+|-----|-----|-------------|
+| Primario (gradiente inicio) | #ca2ca3 | Magenta corporativo |
+| Primario (gradiente fin) | #74456a | Morado profundo |
+| Acento suave fondo burbujas bot | #bbd1d9 | Azul grisáceo claro |
+| Énfasis / Acento alterno | #a3ca2c | Verde lima |
+| Fondo neutro claro | #d9c5bb | Beige suave |
+| Fondo tono medio (panel contenedor) | #6a7445 | Verde oliva grisáceo |
+
+Variables sugeridas (CSS):
+```
+:root {
+  --color-primary-a: #ca2ca3;
+  --color-primary-b: #74456a;
+  --color-accent: #a3ca2c;
+  --color-bot-bg: #bbd1d9;
+  --color-user-bg: linear-gradient(135deg,#ca2ca3,#74456a);
+  --color-panel-bg: #ffffff; /* o #d9c5bb con transparencia */
+  --color-surface-alt: #d9c5bb;
+  --color-border: #e3d9d3;
+  --color-text-dark: #2b2330;
+}
+```
+
+## 📗 Funcionalidades del Frontend (implementadas tras refactor)
+Esta sección describe lo que ya está funcional en el código actual tras integrar la capa de API y el hook.
+
+### Arquitectura UI
+- Componente principal: `components/chatbot.tsx` (widget flotante auto-contenido).
+- Abstracción de estado / lógica: `hooks/useChatSession.ts`.
+- Capa de integración backend: `lib/chatApi.ts`.
+- Persistencia de sesión: `localStorage` (`stellabot_session`).
+
+### Flujo Guiado
+- Al abrir el chat, se realiza automáticamente `POST /api/chat/guide` sin `nextStepId` para obtener el paso inicial (`start`).
+- Cada selección de opción envía `sessionId` y `nextStepId` al backend; la respuesta agrega:
+  - `text`: contenido del paso.
+  - `options[]`: opciones siguientes (cada una con `text` y `nextStepId`).
+  - `guidedCount`: contador acumulado en servidor.
+  - `aiAvailable`: bandera calculada en el servidor (`guidedCount >= 5` o IA activada manualmente).
+- El componente muestra los mensajes en orden cronológico sin sobrescribir el historial.
+
+### Manejo de Mensajes
+- Estructura interna de mensaje: `{ id, text, sender, type }`.
+- Tipos posibles: `guided` (paso guiado) e `ai` (mensajes de IA simulados / futuros).
+- Auto-scroll al último mensaje mediante `ref`.
+
+### Estado y Errores
+- Flags: `loading`, `error` expuestos por el hook.
+- Errores de red o HTTP no exitosos generan un `<div>` con texto de error en rojo.
+- No se bloquea el historial existente frente a errores (solo se evita añadir nuevos mensajes fallidos).
+
+### Lógica IA (placeholder)
+- Campo de entrada libre se habilita actualmente tras `guidedCount >= 3` (config temporal).
+- Cuando se envía texto libre se llama al endpoint `POST /api/chat/ia` (si IA estuviera habilitada) — por ahora se simula respuesta si backend responde mensaje de placeholder. *Siguiente fase: requerir activación previa.*
+
+### Estilos y Theming
+- Uso de variables CSS de paleta: `--color-primary-a`, `--color-primary-b`, `--color-bot-bg`, etc.
+- Gradientes aplicados mediante clases utilitarias con fallback hex si las variables no existen.
+- Contenedor con fondo semitransparente y `backdrop-blur` para integración con páginas host.
+
+### Accesibilidad (nivel inicial)
+- Botón flotante con tamaño táctil adecuado (56px+).
+- Colores contrastantes (magenta/morado sobre texto blanco) — se recomienda verificación adicional WCAG.
+- Pendiente: roles ARIA (`role="log"`, `aria-live="polite"`) y focus trap dentro del panel cuando está abierto.
+
+### Seguridad / Resiliencia
+- SessionId generado con UUID v4 (cliente) y persistido en `localStorage`.
+- Manejo de errores centralizado en `postJson` con mensajes descriptivos.
+- Falta aún: reintentos exponenciales, timeout por petición, sanitización de HTML (no se acepta HTML todavía).
+
+### Extensibilidad Planificada
+- Modal Lead (captura de datos) antes de IA real.
+- Botón explícito "Hablar con IA" cuando `aiAvailable` sea true.
+- Integración de tracking (eventos: open, close, option_select, ai_message_send, error).
+- Exportación como widget independiente (`mount/unmount`).
+
+### Limitaciones actuales
+| Área | Limitación | Solución planeada |
+|------|------------|-------------------|
+| Activación IA | No existe formulario lead | Agregar modal + `enableAI()` |
+| Duplicados posibles | Si backend devuelve mismo texto varias veces se repite | Filtro de mensajes consecutivos iguales |
+| Accesibilidad | Falta navegación teclado completa | Añadir focus trap y aria-live |
+| Resiliencia red | Sin retry/backoff | Implementar wrapper con reintentos |
+| Internacionalización | Sólo español | Añadir diccionario / prop idioma |
+
+## 🔧 Gap vs Flujo Definido
+| Requisito | Estado | Acción requerida |
+|-----------|--------|------------------|
+| Contador de pasos guidedCount backend | Parcial (solo local count) | Consumir `POST /api/chat/guide` con sessionId persistente. |
+| Disponibilidad IA al >=5 | No implementado | Mostrar botón "Hablar con IA" si respuesta incluye `aiAvailable:true`. |
+| Captura de lead (modal formulario) | No implementado | Crear formulario y enviar `POST /api/chat/enable-ai`. |
+| Envío mensajes IA | No implementado | Consumir `POST /api/chat/ia`. |
+| Persistencia sessionId | No implementado | Guardar en `localStorage` (uuid). |
+| Paleta corporativa | Parcial (usa rosa/purpura tailwind) | Sustituir por variables definidas arriba. |
+
+## 📦 Próximos pasos recomendados (Frontend)
+1. Crear servicio `lib/chatApi.ts` con funciones: `guide(nextStepId?)`, `enableAi(lead)`, `askAi(message)`.
+2. Hook `useChatSession` que maneje sessionId, estado de opciones, mensajes, aiAvailable.
+3. Reemplazar lógica local de opciones por respuesta de backend (`text`, `options[]`).
+4. Agregar formulario modal (nombre, email, teléfono, checkbox consentimiento) y validación.
+5. Implementar progresivamente un fallback offline si backend no responde.
+6. Añadir analytics (conteo de abandono, duración). Opcional.
+7. Adaptar estilos a tokens de color y soportar dark mode con `next-themes`.
+
+## 🧪 Ejemplo de llamada (futuro)
+```ts
+const res = await fetch('/api/chat/guide', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessionId, nextStepId })});
+```
+
+## 🔐 Consideraciones
+- Sanitizar HTML en respuestas del backend si se permite formateo.
+- Limitar tamaño de mensaje usuario antes de enviar a OpenAI.
+- Manejar reintentos exponenciales en fallos de red.
+
+---
