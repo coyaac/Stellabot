@@ -29,31 +29,31 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
       setGuidedCount(data.guidedCount);
       setAiAvailable(data.aiAvailable);
       setAiEnabled(!!data.aiEnabled);
-      // Añadimos el texto del paso como mensaje bot (si es primer mensaje o cambia el step)
+  // Add the step text as a bot message (first message or when the step changes)
       setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, text: data.text, sender: 'bot', type: 'guided' }]);
       setCurrentOptions(data.options || []);
     } catch (e: any) {
-      setError(e.message || 'Error cargando paso');
+      setError(e.message || 'Error loading step');
     } finally {
       setLoading(false);
     }
   }, []);
 
   const selectOption = useCallback(async (opt: { text: string; nextStepId: string }) => {
-    // Mensaje usuario
+    // User message
     setMessages(prev => [...prev, { id: `${Date.now()}-u`, text: opt.text, sender: 'user', type: 'guided' }]);
     await loadStep(opt.nextStepId);
   }, [loadStep]);
 
   const sendAiMessage = useCallback(async (text: string) => {
-    if (!aiEnabled) { setError('La IA no está habilitada aún.'); return; }
+  if (!aiEnabled) { setError('AI is not enabled yet.'); return; }
     setMessages(prev => [...prev, { id: `${Date.now()}-uai`, text, sender: 'user', type: 'ai' }]);
     setLoading(true); setError(null);
     try {
       const data = await askAI(text);
       setMessages(prev => [...prev, { id: `${Date.now()}-ai`, text: data.reply, sender: 'bot', type: 'ai' }]);
     } catch (e: any) {
-      setError(e.message || 'Error IA');
+      setError(e.message || 'AI error');
     } finally { setLoading(false); }
   }, [aiEnabled]);
 
@@ -64,7 +64,7 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
       setAiAvailable(true);
       setAiEnabled(true);
     } catch (e: any) {
-      setError(e.message || 'Error activando IA');
+      setError(e.message || 'Error enabling AI');
     } finally { setLoading(false); }
   }, []);
 
