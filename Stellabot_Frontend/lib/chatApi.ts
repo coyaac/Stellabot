@@ -2,7 +2,8 @@ import { v4 as uuid } from 'uuid';
 
 // Base URL del backend (ajustar si se despliega en otro host)
 // LÍNEA CORRECTA
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// CORRECTO
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/chat`;
 
 
 export interface GuidedOption {
@@ -47,10 +48,24 @@ async function postJson<T>(url: string, body: any): Promise<T> {
   return res.json();
 }
 
+// PEGA ESTA NUEVA VERSIÓN
 export async function guide(nextStepId?: string): Promise<GuidedResponse> {
   const sessionId = getOrCreateSessionId();
+  // Si no hay un nextStepId, es la primera llamada y debe ser GET
+  if (!nextStepId) {
+    const response = await fetch(`${BASE_URL}/guide`, {
+      method: 'GET'
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Error ${response.status} ${response.statusText}: ${text}`);
+    }
+    return response.json();
+  }
+  // Si hay un nextStepId, es un paso siguiente y sí debe ser POST
   return postJson<GuidedResponse>(`${BASE_URL}/guide`, { sessionId, nextStepId });
 }
+
 
 export async function enableAI(lead: LeadData): Promise<{ message: string }> {
   const sessionId = getOrCreateSessionId();
