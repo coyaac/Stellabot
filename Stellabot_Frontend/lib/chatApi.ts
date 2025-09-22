@@ -1,7 +1,9 @@
 import { v4 as uuid } from 'uuid';
 
 // Base URL del backend (ajustar si se despliega en otro host)
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api/chat';
+// LÍNEA CORRECTA
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 
 export interface GuidedOption {
   text: string;
