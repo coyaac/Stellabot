@@ -1,7 +1,7 @@
 // src/controllers/chatController.js
 
 // Importamos el mapa de la guía que creamos anteriormente
-const guidedTour = require('../data/guidedtour');
+const guidedTour = require('../data/guidedTour');
 
 // --- NUEVO: Importamos la librería oficial de Google para IA generativa ---
 const { GoogleGenerativeAI } = require("@google/generative-ai");
