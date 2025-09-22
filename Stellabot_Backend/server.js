@@ -11,7 +11,11 @@ const chatRoutes = require('./src/routes/chatRoutes'); // Importamos las rutas d
 const app = express();
 
 // Usar los middlewares
-app.use(cors()); // Habilita CORS para todas las rutas
+const corsOptions = {
+  origin: 'https://stellabot-frontend.onrender.com' // ¡Pega aquí la URL de tu frontend!
+};
+
+app.use(cors(corsOptions));
 app.use(express.json()); // Permite que el servidor entienda peticiones con cuerpo en formato JSON
 
 // Ahora usamos un prefijo para todas las rutas del chat
