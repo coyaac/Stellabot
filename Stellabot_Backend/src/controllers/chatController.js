@@ -17,35 +17,43 @@ const sessions = {};
  * Handle the guided chat flow when frontend calls POST /api/chat/guide
  */
 exports.handleGuidedChat = (req, res) => {
-    // Read sessionId and the selected nextStepId (if any)
-    const { sessionId, nextStepId } = req.body;
+    // Intenta obtener los datos del body (para POST) o usa valores por defecto (para GET)
+    const sessionId = req.body?.sessionId;
+    const nextStepId = req.body?.nextStepId || 'start';
 
-    // Create session if it doesn't exist
-    if (!sessions[sessionId]) {
-    sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
+    // ¡Validación crucial! Si no tenemos un sessionId en un paso que no es el inicial, es un error.
+    if (!sessionId && nextStepId !== 'start') {
+        return res.status(400).json({ error: 'Session ID is required for subsequent steps.' });
     }
 
-    const currentSession = sessions[sessionId];
-    // Only count an interaction when the user selected an option (i.e., nextStepId is present)
-    const isSelection = typeof nextStepId === 'string' && nextStepId.length > 0;
-    if (isSelection) {
+    // Si la sesión es nueva (solo para POST con un sessionId), la creamos.
+    if (sessionId && !sessions[sessionId]) {
+        sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
+    }
+
+    // Obtenemos la sesión actual si existe, o un objeto temporal para la primera llamada.
+    const currentSession = sessionId ? sessions[sessionId] : { guidedCount: 0, aiEnabled: false };
+    
+    // Incrementamos el contador de interacciones solo si la sesión ya existe.
+    if(sessionId) {
         currentSession.guidedCount++;
     }
 
-    // Resolve the step from the flow; if no ID, show the start step
+    // Buscamos el paso correspondiente en nuestro guion.
     const step = guidedTour[nextStepId] || guidedTour['start'];
 
-    // Check if AI should be available
+    // Verificamos si la opción de IA debe estar disponible.
     const aiAvailable = currentSession.guidedCount >= 5 || currentSession.aiEnabled;
 
-    // Return step text/options and current session state
+    // Devolvemos el texto del paso, las opciones, y el estado actual de la sesión.
     res.status(200).json({
         ...step,
-        guidedCount: currentSession.guidedCount,
+        guidedCount: sessionId ? currentSession.guidedCount : 1, // El primer paso cuenta como 1.
         aiAvailable: aiAvailable,
         aiEnabled: currentSession.aiEnabled,
     });
 };
+
 
 
 /**
