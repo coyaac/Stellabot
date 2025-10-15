@@ -9,5 +9,7 @@ router.get('/guide', chatController.handleGuidedChat);
 router.post('/guide', chatController.handleGuidedChat);
 router.post('/enable-ai', chatController.enableAiChat);
 router.post('/ia', chatController.handleAiChat);
+router.post('/starter-pack', chatController.requestStarterPack);
+router.post('/reset', chatController.resetSession);
 
 module.exports = router;

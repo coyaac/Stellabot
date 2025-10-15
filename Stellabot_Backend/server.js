@@ -14,7 +14,7 @@ const app = express();
 app.use(express.json());
 
 // 2. Define la URL exacta de tu frontend desplegado
-const frontendURL = 'https://stellabot-frontend.onrender.com';
+const frontendURL = 'http://localhost:3000';
 
 // 3. Crea las opciones para CORS (solo permitir peticiones desde tu frontend)
 const corsOptions = {

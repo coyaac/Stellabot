@@ -17,40 +17,54 @@ const sessions = {};
  * Handle the guided chat flow when frontend calls POST /api/chat/guide
  */
 exports.handleGuidedChat = (req, res) => {
-    // Intenta obtener los datos del body (para POST) o usa valores por defecto (para GET)
-    const sessionId = req.body?.sessionId;
-    const nextStepId = req.body?.nextStepId || 'start';
+    // Accept GET (initial load) and POST (selections)
+    const source = req.method === 'GET' ? req.query : req.body;
+    const sessionId = source.sessionId;
+    const nextStepId = source.nextStepId || 'start';
 
-    // ¡Validación crucial! Si no tenemos un sessionId en un paso que no es el inicial, es un error.
-    if (!sessionId && nextStepId !== 'start') {
+    // If no sessionId and it's the initial start, return start without creating session
+    if (!sessionId && nextStepId === 'start') {
+        const step = guidedTour['start'];
+        return res.status(200).json({
+            ...step,
+            guidedCount: 0,
+            aiAvailable: false,
+            aiEnabled: false,
+            starterRequested: false,
+        });
+    }
+
+    // Validate session for subsequent steps
+    if (!sessionId) {
         return res.status(400).json({ error: 'Session ID is required for subsequent steps.' });
     }
 
-    // Si la sesión es nueva (solo para POST con un sessionId), la creamos.
-    if (sessionId && !sessions[sessionId]) {
+    // Ensure session exists
+    if (!sessions[sessionId]) {
         sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
     }
 
-    // Obtenemos la sesión actual si existe, o un objeto temporal para la primera llamada.
-    const currentSession = sessionId ? sessions[sessionId] : { guidedCount: 0, aiEnabled: false };
-    
-    // Incrementamos el contador de interacciones solo si la sesión ya existe.
-    if(sessionId) {
-        currentSession.guidedCount++;
+    const currentSession = sessions[sessionId];
+
+    // Count only when a user selects an option (POST with nextStepId)
+    const isSelection = req.method === 'POST' && typeof nextStepId === 'string' && nextStepId !== 'start';
+    if (isSelection) {
+        currentSession.guidedCount += 1;
+        // Auto-enable AI after 5 guided selections
+        if (currentSession.guidedCount >= 5 && !currentSession.aiEnabled) {
+            currentSession.aiEnabled = true;
+        }
     }
 
-    // Buscamos el paso correspondiente en nuestro guion.
     const step = guidedTour[nextStepId] || guidedTour['start'];
-
-    // Verificamos si la opción de IA debe estar disponible.
     const aiAvailable = currentSession.guidedCount >= 5 || currentSession.aiEnabled;
 
-    // Devolvemos el texto del paso, las opciones, y el estado actual de la sesión.
     res.status(200).json({
         ...step,
-        guidedCount: sessionId ? currentSession.guidedCount : 1, // El primer paso cuenta como 1.
-        aiAvailable: aiAvailable,
+        guidedCount: currentSession.guidedCount,
+        aiAvailable,
         aiEnabled: currentSession.aiEnabled,
+        starterRequested: !!currentSession.lead,
     });
 };
 
@@ -134,4 +148,39 @@ Always be polite and professional.
         console.error("Error contacting Gemini API:", error);
         res.status(500).json({ error: "There was a problem contacting the AI assistant." });
     }
+};
+
+/**
+ * Request Starter Pack (collect lead and send pack) - POST /api/chat/starter-pack
+ */
+exports.requestStarterPack = (req, res) => {
+    const { sessionId, name, email, phone } = req.body || {};
+    if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required.' });
+    }
+    if (!sessions[sessionId]) {
+        sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
+    }
+    if (!name || !email) {
+        return res.status(400).json({ error: 'Name and email are required to receive the Starter Pack.' });
+    }
+    // Store lead details
+    sessions[sessionId].lead = { name, email, phone };
+    // TODO: Integrate with Zoho Desk and send Starter Pack email
+    console.log(`Starter Pack requested by ${name} <${email}> (phone: ${phone || 'N/A'})`);
+    return res.status(200).json({ message: 'Starter Pack requested successfully. Please check your email shortly.' });
+};
+
+/**
+ * Reset a chat session - POST /api/chat/reset
+ */
+exports.resetSession = (req, res) => {
+    const { sessionId } = req.body || {};
+    if (!sessionId) {
+        return res.status(400).json({ error: 'Session ID is required.' });
+    }
+    if (sessions[sessionId]) {
+        delete sessions[sessionId];
+    }
+    return res.status(200).json({ ok: true });
 };

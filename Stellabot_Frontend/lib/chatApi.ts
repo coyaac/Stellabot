@@ -17,6 +17,7 @@ export interface GuidedResponse {
   guidedCount: number;
   aiAvailable: boolean;
   aiEnabled?: boolean;
+  starterRequested?: boolean;
 }
 
 export interface LeadData {
@@ -75,4 +76,14 @@ export async function enableAI(lead: LeadData): Promise<{ message: string }> {
 export async function askAI(message: string): Promise<{ reply: string }> {
   const sessionId = getOrCreateSessionId();
   return postJson<{ reply: string }>(`${BASE_URL}/ia`, { sessionId, message });
+}
+
+export async function requestStarterPack(lead: LeadData): Promise<{ message: string }> {
+  const sessionId = getOrCreateSessionId();
+  return postJson<{ message: string }>(`${BASE_URL}/starter-pack`, { sessionId, ...lead });
+}
+
+export async function resetSession(): Promise<{ ok: boolean }> {
+  const sessionId = getOrCreateSessionId();
+  return postJson<{ ok: boolean }>(`${BASE_URL}/reset`, { sessionId });
 }

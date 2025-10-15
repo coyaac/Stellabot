@@ -8,14 +8,17 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, X, Send, Bot, User } from "lucide-react"
 import { useChatSession } from "@/hooks/useChatSession"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [inputValue, setInputValue] = useState("")
   const [leadOpen, setLeadOpen] = useState(false)
-  const [lead, setLead] = useState({ name: '', email: '', phone: '' })
+  const [leadMode, setLeadMode] = useState<'starter' | 'activate'>("starter")
+  const [lead, setLead] = useState({ name: "", email: "", phone: "" })
+  const [showStarterCta, setShowStarterCta] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -24,16 +27,19 @@ export function Chatbot() {
     guidedCount,
     aiAvailable,
     aiEnabled,
+    starterRequested,
     loading,
     error,
     selectOption,
     sendAiMessage,
     activateAI,
+    requestStarterPack,
   } = useChatSession()
 
   const handleOptionSelect = async (opt: { text: string; nextStepId: string }) => {
     // If the guided flow requests to enter email to unlock AI, open the lead modal instead of requesting a next step
     if (opt.nextStepId === 'AI_chat') {
+      setLeadMode('starter');
       setLeadOpen(true);
       return;
     }
@@ -48,19 +54,34 @@ export function Chatbot() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); handleSendMessage()
+      e.preventDefault()
+      handleSendMessage()
     }
   }
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }
   useEffect(() => { scrollToBottom() }, [messages])
 
+  // When AI gets enabled, show a one-time CTA inside the chat to request the Starter Pack
+  useEffect(() => {
+    if (aiEnabled) setShowStarterCta(true)
+  }, [aiEnabled])
+
+  // Ensure we scroll to the inline CTA when it appears (after 5th interaction)
+  useEffect(() => {
+    if (showStarterCta) {
+      // Slight delay to ensure DOM is painted before scrolling
+      const t = setTimeout(() => scrollToBottom(), 20)
+      return () => clearTimeout(t)
+    }
+  }, [showStarterCta])
+
   return (
     <>
   {/* Floating button to open chat */}
       {!isOpen && (
         <Button
-          onClick={() => setIsOpen(true)}
+          onClick={() => { setIsClosing(false); setIsOpen(true) }}
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-[#ca2ca3] hover:opacity-90 shadow-lg transition-all duration-300 z-50"
           size="icon"
         >
@@ -70,7 +91,7 @@ export function Chatbot() {
 
   {/* Chat window */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-96 h-[520px] flex flex-col shadow-2xl border border-[var(--color-border,#e3d9d3)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 z-50 animate-in slide-in-from-bottom-4 duration-300">
+  <Card className={`fixed bottom-6 right-6 w-96 h-[520px] flex flex-col shadow-2xl border border-[var(--color-border,#e3d9d3)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 z-50 transform-gpu ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
           {/* Chat header */}
           <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white rounded-t-lg">
             <div className="flex items-center gap-3">
@@ -82,16 +103,41 @@ export function Chatbot() {
                 <p className="text-xs text-white/80">{loading ? 'Loading…' : 'Ready'}</p>
               </div>
             </div>
-            <Button onClick={() => setIsOpen(false)} variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20">
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {aiEnabled && !starterRequested && !showStarterCta && (
+                <Button
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white"
+                  onClick={() => { setLeadMode('starter'); setLeadOpen(true); }}
+                >
+                  Get Starter Pack
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setIsClosing(true)
+                  setTimeout(() => {
+                    setIsOpen(false)
+                    setIsClosing(false)
+                  }, 360)
+                }}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-white hover:bg-white/20"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages area */}
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map(m => (
-                <div key={m.id} className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  key={m.id}
+                  className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'} ${m.sender === 'user' ? 'animate-chat-bubble-right' : 'animate-chat-bubble-left'}`}
+                >
                   {m.sender === 'bot' && (
                     <div className="h-8 w-8 rounded-full bg-[#ca2ca3] flex items-center justify-center flex-shrink-0">
                       <Bot className="h-4 w-4 text-white" />
@@ -112,18 +158,43 @@ export function Chatbot() {
 
               {!loading && currentOptions.length > 0 && (
                 <div className="space-y-2">
-                  {currentOptions.map(opt => (
+                  {currentOptions.map((opt, idx) => (
                     <Button
                       key={opt.nextStepId}
                       onClick={() => handleOptionSelect(opt)}
                       variant="outline"
-                      className="w-full max-w-full text-left justify-start items-start text-sm leading-snug h-auto p-3 border-[var(--color-primary-a,#ca2ca3)]/30 hover:bg-[var(--color-primary-a,#ca2ca3)]/10 overflow-hidden rounded-md"
+                      className="w-full max-w-full text-left justify-start items-start text-sm leading-snug h-auto p-3 border-[var(--color-primary-a,#ca2ca3)]/30 hover:bg-[var(--color-primary-a,#ca2ca3)]/10 overflow-hidden rounded-md animate-option-in"
+                      style={{ animationDelay: `${Math.min(idx * 60, 300)}ms` }}
                     >
                       <span className="whitespace-normal break-words text-left block w-full">
                         {opt.text}
                       </span>
                     </Button>
                   ))}
+                </div>
+              )}
+
+              {/* Inline CTA inside the chat stream for Starter Pack once AI is enabled */}
+              {aiEnabled && showStarterCta && !starterRequested && (
+                <div className="flex gap-3 justify-start animate-chat-bubble-left">
+                  <div className="h-8 w-8 rounded-full bg-[#ca2ca3] flex items-center justify-center flex-shrink-0">
+                    <Bot className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="max-w-[280px] p-3 rounded-lg text-sm shadow-sm bg-[#bbd1d9] text-[var(--color-text-dark,#2b2330)]">
+                    <div className="space-y-2">
+                      <p>Want our Starter Pack in your inbox?</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-[#ca2ca3] text-white hover:opacity-90"
+                          onClick={() => { setLeadMode('starter'); setLeadOpen(true); }}
+                        >
+                          Get Starter Pack
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowStarterCta(false)}>Not now</Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -138,7 +209,7 @@ export function Chatbot() {
           )}
 
           {aiEnabled && (
-            <div className="p-4 border-t border-[var(--color-border,#e3d9d3)] bg-[#a3ca2c]">
+            <div className="p-4 border-t border-[var(--color-border,#e3d9d3)] bg-[#6a7445]">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs text-white">AI mode enabled. Ask your question:</p>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-white/20 text-white font-medium">AI Enabled</span>
@@ -149,7 +220,7 @@ export function Chatbot() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your message..."
-                  className="flex-1 border-[var(--color-primary-a,#ca2ca3)]/40 focus-visible:ring-[var(--color-primary-a,#ca2ca3)]/40"
+                  className="flex-1 bg-white/10 text-white placeholder:text-white/80 border-white/60 focus-visible:ring-white/70 focus-visible:ring-offset-0 caret-white"
                   disabled={loading}
                 />
                 <Button
@@ -174,8 +245,12 @@ export function Chatbot() {
       <Dialog open={leadOpen} onOpenChange={setLeadOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Activate AI</DialogTitle>
-            <DialogDescription>Leave your details to continue chatting with the AI.</DialogDescription>
+            <DialogTitle>{leadMode === 'starter' ? 'Get Starter Pack' : 'Activate AI'}</DialogTitle>
+            <DialogDescription>
+              {leadMode === 'starter'
+                ? 'Leave your details to receive the Starter Pack by email.'
+                : 'Leave your details to continue chatting with the AI.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex flex-col gap-1">
@@ -197,12 +272,16 @@ export function Chatbot() {
             <Button
               disabled={!lead.name.trim() || !lead.email.trim() || loading}
               onClick={async () => {
-                await activateAI({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                if (leadMode === 'starter') {
+                  await requestStarterPack({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                } else {
+                  await activateAI({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                }
                 setLeadOpen(false);
               }}
               className="bg-[#ca2ca3] text-white hover:opacity-90"
             >
-              {loading ? 'Activating...' : 'Activate'}
+              {loading ? (leadMode === 'starter' ? 'Sending...' : 'Activating...') : (leadMode === 'starter' ? 'Get Pack' : 'Activate')}
             </Button>
           </DialogFooter>
         </DialogContent>
