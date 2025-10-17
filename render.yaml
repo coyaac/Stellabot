@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: stellabot-backend
+    env: node
+    rootDir: .
+    buildCommand: bash -lc "npm ci --prefix Stellabot_Backend"
+    startCommand: bash -lc "node Stellabot_Backend/server.js"
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      # Define these in Render dashboard or uncomment and set here if you prefer committing (not recommended for secrets)
+      # - key: FRONTEND_URLS
+      #   value: https://your-frontend.example.com, https://your-zoho.zohosites.com
+      # - key: GEMINI_API_KEY
+      #   sync: false
