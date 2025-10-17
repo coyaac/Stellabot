@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2019",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "strict": false,
+    "allowJs": true,
+    "checkJs": false,
+    "lib": ["ES2020"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": [
+    "api/**/*.js",
+    "src/**/*.js",
+    "server.js",
+    "app.js"
+  ],
+  "exclude": [
+    "../Stellabot_Frontend/**",
+    "node_modules"
+  ]
+}

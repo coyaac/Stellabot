@@ -43,3 +43,5 @@ Thumbs.db
 
 # FormKit (covered by node_modules, explicit for clarity)
 **/@formkit/
+
+log.md

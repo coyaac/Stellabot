@@ -6,6 +6,9 @@
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -16,5 +19,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
   }
 }

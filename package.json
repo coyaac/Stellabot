@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "@formkit/auto-animate": "^0.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1"
   }
 }
