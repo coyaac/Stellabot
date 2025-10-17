@@ -1,0 +1,11 @@
+# Ignore everything outside backend to avoid Next/React picking by Vercel
+../
+!/Stellabot_Backend
+
+# Within backend, ignore node_modules cache and env files
+node_modules/
+.env
+**/.env*
+
+# Ignore frontend folders if copied inside by mistake
+Stellabot_Frontend/
