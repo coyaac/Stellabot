@@ -3,11 +3,23 @@
 // Import the guided flow map
 const guidedTour = require('../data/guidedTour');
 
-// Google Generative AI SDK
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-// Initialize the client with your API key set in process.env.GEMINI_API_KEY
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Google Generative AI (lazy init to avoid crashing server on startup)
+let genAI = null;
+function getGenAI() {
+    if (genAI) return genAI;
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+        throw new Error("GEMINI_API_KEY is not set");
+    }
+    try {
+        const { GoogleGenerativeAI } = require("@google/generative-ai");
+        genAI = new GoogleGenerativeAI(key);
+        return genAI;
+    } catch (err) {
+        // Surface a helpful error if the SDK isn't installed
+        throw new Error("Failed to load @google/generative-ai. Run 'npm install' in Stellabot_Backend.");
+    }
+}
 
 // Simple in-memory session store (replace with DB/Zoho later)
 const sessions = {};
@@ -105,6 +117,7 @@ exports.handleAiChat = async (req, res) => {
     }
 
     try {
+        const client = getGenAI();
         // --- INICIO DE LA MODIFICACIÓN ---
 
     // 1. Define assistant role and knowledge context
@@ -126,7 +139,7 @@ Always be polite and professional.
     `;
 
         // 2. Seleccionamos el modelo de Gemini.
-        const model = genAI.getGenerativeModel({ 
+        const model = client.getGenerativeModel({ 
             model: "gemini-2.5-flash",
             systemInstruction: systemInstruction, // Le pasamos las instrucciones del sistema.
         });
@@ -145,8 +158,9 @@ Always be polite and professional.
         res.status(200).json({ reply: text });
 
     } catch (error) {
-        console.error("Error contacting Gemini API:", error);
-        res.status(500).json({ error: "There was a problem contacting the AI assistant." });
+        console.error("AI error:", error);
+        const msg = (error && error.message) ? error.message : "There was a problem contacting the AI assistant.";
+        res.status(500).json({ error: msg });
     }
 };
 
