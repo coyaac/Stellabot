@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, X, Send, Bot, User } from "lucide-react"
 import { useChatSession } from "@/hooks/useChatSession"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
 export function Chatbot({ startOpen = false, hideLauncher = false, embedded = false }: { startOpen?: boolean; hideLauncher?: boolean; embedded?: boolean } = {}) {
@@ -18,6 +17,7 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
   const [leadOpen, setLeadOpen] = useState(false)
   const [leadMode, setLeadMode] = useState<'starter' | 'activate'>("starter")
   const [lead, setLead] = useState({ name: "", email: "", phone: "" })
+  const [emailError, setEmailError] = useState("")
   const [showStarterCta, setShowStarterCta] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -59,6 +59,20 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
     }
   }
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const handleEmailChange = (value: string) => {
+    setLead({ ...lead, email: value })
+    if (value.trim() && !validateEmail(value)) {
+      setEmailError("Please enter a valid email address")
+    } else {
+      setEmailError("")
+    }
+  }
+
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }
   useEffect(() => { scrollToBottom() }, [messages])
 
@@ -76,6 +90,29 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
     }
   }, [showStarterCta])
 
+  // Listen for reopen message from parent widget (when inside iframe)
+  useEffect(() => {
+    // Check if we're inside an iframe
+    const isInIframe = window.self !== window.top
+    if (isInIframe || embedded) {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data === 'stellabot-reopen') {
+          setIsOpen(true)
+          setIsClosing(false)
+        }
+      }
+      window.addEventListener('message', handleMessage)
+      return () => window.removeEventListener('message', handleMessage)
+    }
+  }, [embedded])
+
+  // Clear email error when modal opens
+  useEffect(() => {
+    if (leadOpen) {
+      setEmailError("")
+    }
+  }, [leadOpen])
+
   return (
     <>
   {/* Floating button to open chat */}
@@ -91,9 +128,9 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
 
   {/* Chat window */}
     {isOpen && (
-  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-2xl bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
+  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-none bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu overflow-hidden rounded-lg p-0 ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
           {/* Chat header */}
-          <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white rounded-t-lg">
+          <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
                 <Bot className="h-4 w-4" />
@@ -115,11 +152,13 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
               )}
               <Button
                 onClick={() => {
-                  setIsClosing(true)
-                  setTimeout(() => {
-                    setIsOpen(false)
-                    setIsClosing(false)
-                  }, 360)
+                  setIsOpen(false)
+                  setIsClosing(false)
+                  // Notify parent widget that chat is closed (when inside iframe)
+                  const isInIframe = window.self !== window.top
+                  if ((isInIframe || embedded) && window.parent) {
+                    window.parent.postMessage('stellabot-closed', '*')
+                  }
                 }}
                 variant="ghost"
                 size="icon"
@@ -242,50 +281,61 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
         </Card>
       )}
 
-      <Dialog open={leadOpen} onOpenChange={setLeadOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>{leadMode === 'starter' ? 'Get Starter Pack' : 'Activate AI'}</DialogTitle>
-            <DialogDescription>
-              {leadMode === 'starter'
-                ? 'Leave your details to receive the Starter Pack by email.'
-                : 'Leave your details to continue chatting with the AI.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="lead-name">Name*</Label>
-              <Input id="lead-name" value={lead.name} onChange={e => setLead({ ...lead, name: e.target.value })} placeholder="Your name" />
+      {/* Lead capture modal - inline within chat */}
+      {leadOpen && isOpen && (
+        <div className="fixed bottom-6 right-6 w-80 h-[480px] z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-lg">
+          <div className="bg-white rounded-lg p-6 w-full max-w-[340px] shadow-xl">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">{leadMode === 'starter' ? 'Get Starter Pack' : 'Activate AI'}</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {leadMode === 'starter'
+                  ? 'Leave your details to receive the Starter Pack by email.'
+                  : 'Leave your details to continue chatting with the AI.'}
+              </p>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="lead-email">Email*</Label>
-              <Input id="lead-email" type="email" value={lead.email} onChange={e => setLead({ ...lead, email: e.target.value })} placeholder="you@example.com" />
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="lead-name">Name*</Label>
+                <Input id="lead-name" value={lead.name} onChange={e => setLead({ ...lead, name: e.target.value })} placeholder="Your name" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="lead-email">Email*</Label>
+                <Input 
+                  id="lead-email" 
+                  type="email" 
+                  value={lead.email} 
+                  onChange={e => handleEmailChange(e.target.value)} 
+                  placeholder="you@example.com"
+                  className={emailError ? "border-red-500" : ""}
+                />
+                {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="lead-phone">Phone</Label>
+                <Input id="lead-phone" value={lead.phone} onChange={e => setLead({ ...lead, phone: e.target.value })} placeholder="Optional" />
+              </div>
+              {error && <p className="text-xs text-red-600">{error}</p>}
             </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="lead-phone">Phone</Label>
-              <Input id="lead-phone" value={lead.phone} onChange={e => setLead({ ...lead, phone: e.target.value })} placeholder="Optional" />
+            <div className="flex gap-2 mt-6 justify-end">
+              <Button variant="ghost" onClick={() => setLeadOpen(false)}>Cancel</Button>
+              <Button
+                disabled={!lead.name.trim() || !lead.email.trim() || !!emailError || loading}
+                onClick={async () => {
+                  if (leadMode === 'starter') {
+                    await requestStarterPack({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                  } else {
+                    await activateAI({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
+                  }
+                  setLeadOpen(false);
+                }}
+                className="bg-[#ca2ca3] text-white hover:opacity-90"
+              >
+                {loading ? (leadMode === 'starter' ? 'Sending...' : 'Activating...') : (leadMode === 'starter' ? 'Get Pack' : 'Activate')}
+              </Button>
             </div>
-            {error && <p className="text-xs text-red-600">{error}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setLeadOpen(false)}>Cancel</Button>
-            <Button
-              disabled={!lead.name.trim() || !lead.email.trim() || loading}
-              onClick={async () => {
-                if (leadMode === 'starter') {
-                  await requestStarterPack({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
-                } else {
-                  await activateAI({ name: lead.name.trim(), email: lead.email.trim(), phone: lead.phone.trim() || undefined });
-                }
-                setLeadOpen(false);
-              }}
-              className="bg-[#ca2ca3] text-white hover:opacity-90"
-            >
-              {loading ? (leadMode === 'starter' ? 'Sending...' : 'Activating...') : (leadMode === 'starter' ? 'Get Pack' : 'Activate')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   )
 }

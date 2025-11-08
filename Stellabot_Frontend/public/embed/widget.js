@@ -72,6 +72,17 @@
     let inlinePanel = null
     let inlineIframe = null
 
+    // Listen for messages from embedded chat
+    window.addEventListener('message', function(event) {
+      if (event.data === 'stellabot-closed') {
+        // Chat sent close signal, hide the inline panel
+        if (inlinePanel) {
+          inlinePanel.style.display = 'none'
+          btn.setAttribute('aria-expanded', 'false')
+        }
+      }
+    })
+
     function openPopup() {
       if (popup && !popup.closed) { popup.focus(); return }
       popup = window.open(url, winName, winOpts)
@@ -168,7 +179,13 @@
         // place the panel; ensure position recalculated in case of scroll/layout changes
         applyPosition(panel, position, offsetX, offsetY + size + 12)
         btn.setAttribute('aria-expanded', 'true')
-        setTimeout(() => inlineIframe && inlineIframe.focus?.(), 100)
+        // Send message to chat to reopen
+        setTimeout(() => {
+          if (inlineIframe && inlineIframe.contentWindow) {
+            inlineIframe.contentWindow.postMessage('stellabot-reopen', '*')
+          }
+        }, 100)
+        setTimeout(() => inlineIframe && inlineIframe.focus?.(), 150)
       } else {
         panel.style.display = 'none'
         btn.setAttribute('aria-expanded', 'false')
