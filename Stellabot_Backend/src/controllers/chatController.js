@@ -88,9 +88,9 @@ exports.handleGuidedChat = (req, res) => {
 exports.enableAiChat = (req, res) => {
     const { sessionId, name, email } = req.body;
 
-    // Validate session exists
+    // Tolerate serverless statelessness: create session if missing
     if (!sessions[sessionId]) {
-        return res.status(404).json({ error: "Session not found." });
+        sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
     }
 
     // TODO: Integrate with Zoho and send Starter Pack

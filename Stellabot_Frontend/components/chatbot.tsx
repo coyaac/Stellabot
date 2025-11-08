@@ -11,8 +11,8 @@ import { useChatSession } from "@/hooks/useChatSession"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 
-export function Chatbot() {
-  const [isOpen, setIsOpen] = useState(false)
+export function Chatbot({ startOpen = false, hideLauncher = false, embedded = false }: { startOpen?: boolean; hideLauncher?: boolean; embedded?: boolean } = {}) {
+  const [isOpen, setIsOpen] = useState(startOpen)
   const [isClosing, setIsClosing] = useState(false)
   const [inputValue, setInputValue] = useState("")
   const [leadOpen, setLeadOpen] = useState(false)
@@ -79,7 +79,7 @@ export function Chatbot() {
   return (
     <>
   {/* Floating button to open chat */}
-      {!isOpen && (
+      {!isOpen && !hideLauncher && (
         <Button
           onClick={() => { setIsClosing(false); setIsOpen(true) }}
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-[#ca2ca3] hover:opacity-90 shadow-lg transition-all duration-300 z-50"
@@ -90,8 +90,8 @@ export function Chatbot() {
       )}
 
   {/* Chat window */}
-      {isOpen && (
-  <Card className={`fixed bottom-6 right-6 w-96 h-[520px] flex flex-col shadow-2xl border border-[var(--color-border,#e3d9d3)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 z-50 transform-gpu ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
+    {isOpen && (
+  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-2xl bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
           {/* Chat header */}
           <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white rounded-t-lg">
             <div className="flex items-center gap-3">
