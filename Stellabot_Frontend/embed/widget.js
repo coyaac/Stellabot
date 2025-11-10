@@ -150,6 +150,7 @@
         background: 'white',
         display: 'flex',
         flexDirection: 'column',
+        pointerEvents: 'none',
       })
       applyPosition(panel, position, offsetX, offsetY + size + 12) // nudge above button by 12px
 
@@ -161,7 +162,8 @@
         justifyContent: 'flex-end',
         alignItems: 'center',
         background: 'transparent',
-        borderBottom: '1px solid rgba(0,0,0,0.06)'
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        pointerEvents: 'auto',
       })
       const closeBtn = document.createElement('button')
       closeBtn.innerText = '✕'
@@ -172,7 +174,7 @@
       const iframe = document.createElement('iframe')
       iframe.src = url
       iframe.setAttribute('title', 'Stellabot')
-      Object.assign(iframe.style, { border: 'none', width: '100%', height: '100%', flex: '1 1 auto', background: 'white' })
+      Object.assign(iframe.style, { border: 'none', width: '100%', height: '100%', flex: '1 1 auto', background: 'white', pointerEvents: 'auto' })
 
       closeBtn.addEventListener('click', () => {
         panel.style.display = 'none'
@@ -185,6 +187,7 @@
 
       inlinePanel = panel
       inlineIframe = iframe
+      panel.style.display = 'none' // Start hidden by default
       return panel
     }
 

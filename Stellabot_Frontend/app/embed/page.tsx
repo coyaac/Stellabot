@@ -4,7 +4,7 @@ import { Chatbot } from "@/components/chatbot"
 export default function EmbedPage() {
   // Render only the chatbot overlay environment; page background minimal
   return (
-    <div className="w-full h-full bg-transparent overflow-hidden">
+    <div className="w-full h-full bg-transparent overflow-hidden pointer-events-none">
       <Chatbot startOpen hideLauncher />
       <style jsx global>{`
         html, body, #__next { 

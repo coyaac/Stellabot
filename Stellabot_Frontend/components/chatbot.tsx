@@ -128,7 +128,7 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
 
   {/* Chat window */}
     {isOpen && (
-  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-none bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu overflow-hidden rounded-lg p-0 ${isClosing ? "pointer-events-none animate-chat-panel-out" : "animate-chat-panel-in"}`}>
+  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-none bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu overflow-hidden rounded-lg p-0 ${isClosing ? "pointer-events-none animate-chat-panel-out" : "pointer-events-auto animate-chat-panel-in"}`}>
           {/* Chat header */}
           <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white">
             <div className="flex items-center gap-3">

@@ -12,16 +12,56 @@ interface UseChatSessionOptions {
   autoStart?: boolean;
 }
 
+// Key for sessionStorage
+const SESSION_KEY = 'stellabot_chat_session';
+
+// Helper to load session from sessionStorage
+const loadSessionFromStorage = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Helper to save session to sessionStorage
+const saveSessionToStorage = (session: any) => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch (e) {
+    console.error('Error saving session:', e);
+  }
+};
+
 export function useChatSession(opts: UseChatSessionOptions = {}) {
   const { autoStart = true } = opts;
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Try to load from sessionStorage on mount
+  const stored = loadSessionFromStorage();
+  
+  const [messages, setMessages] = useState<ChatMessage[]>(stored?.messages || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentOptions, setCurrentOptions] = useState<{ text: string; nextStepId: string }[]>([]);
-  const [guidedCount, setGuidedCount] = useState(0);
-  const [aiAvailable, setAiAvailable] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [starterRequested, setStarterRequested] = useState(false);
+  const [currentOptions, setCurrentOptions] = useState<{ text: string; nextStepId: string }[]>(stored?.currentOptions || []);
+  const [guidedCount, setGuidedCount] = useState(stored?.guidedCount || 0);
+  const [aiAvailable, setAiAvailable] = useState(stored?.aiAvailable || false);
+  const [aiEnabled, setAiEnabled] = useState(stored?.aiEnabled || false);
+  const [starterRequested, setStarterRequested] = useState(stored?.starterRequested || false);
+
+  // Save to sessionStorage whenever state changes
+  useEffect(() => {
+    saveSessionToStorage({
+      messages,
+      currentOptions,
+      guidedCount,
+      aiAvailable,
+      aiEnabled,
+      starterRequested,
+    });
+  }, [messages, currentOptions, guidedCount, aiAvailable, aiEnabled, starterRequested]);
 
   const loadStep = useCallback(async (nextStepId?: string) => {
     setLoading(true); setError(null);
@@ -102,7 +142,12 @@ export function useChatSession(opts: UseChatSessionOptions = {}) {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (autoStart) loadStep(); }, [autoStart, loadStep]);
+  useEffect(() => { 
+    // Only auto-load the first step if there's no stored session
+    if (autoStart && messages.length === 0) {
+      loadStep();
+    }
+  }, [autoStart, loadStep, messages.length]);
 
   return {
     messages,

@@ -155,19 +155,21 @@
         background: 'transparent',
         display: 'flex',
         flexDirection: 'column',
+        pointerEvents: 'none',
       })
       applyPosition(panel, position, offsetX, offsetY + size + 12) // nudge above button by 12px
 
       const iframe = document.createElement('iframe')
       iframe.src = url
       iframe.setAttribute('title', 'Stellabot')
-      Object.assign(iframe.style, { border: 'none', width: '100%', height: '100%', flex: '1 1 auto', background: 'transparent' })
+      Object.assign(iframe.style, { border: 'none', width: '100%', height: '100%', flex: '1 1 auto', background: 'transparent', pointerEvents: 'auto' })
 
       panel.appendChild(iframe)
       document.body.appendChild(panel)
 
       inlinePanel = panel
       inlineIframe = iframe
+      panel.style.display = 'none' // Start hidden by default
       return panel
     }
 
