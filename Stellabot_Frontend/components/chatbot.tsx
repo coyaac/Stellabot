@@ -128,7 +128,7 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
 
   {/* Chat window */}
     {isOpen && (
-  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-none bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu overflow-hidden rounded-lg p-0 ${isClosing ? "pointer-events-none animate-chat-panel-out" : "pointer-events-auto animate-chat-panel-in"}`}>
+  <Card className={`${embedded ? 'relative w-full h-full max-w-sm max-h-[500px] shadow-none bg-white border border-[var(--color-border,#e3d9d3)]' : 'fixed bottom-6 right-6 w-80 h-[480px] shadow-none bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border border-[var(--color-border,#e3d9d3)]'} flex flex-col z-50 transform-gpu overflow-hidden rounded-lg p-0 ${isClosing ? "pointer-events-none animate-chat-panel-out" : "pointer-events-auto animate-chat-panel-in"} ${leadOpen ? 'opacity-50 pointer-events-none' : ''}`}>
           {/* Chat header */}
           <div className="flex items-center justify-between p-4 bg-[#ca2ca3] text-white">
             <div className="flex items-center gap-3">
@@ -281,10 +281,23 @@ export function Chatbot({ startOpen = false, hideLauncher = false, embedded = fa
         </Card>
       )}
 
-      {/* Lead capture modal - inline within chat */}
+      {/* Lead capture modal - overlay on top of chat */}
       {leadOpen && isOpen && (
-        <div className="fixed bottom-6 right-6 w-80 h-[480px] z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-lg">
-          <div className="bg-white rounded-lg p-6 w-full max-w-[340px] shadow-xl">
+        <div 
+          className={`${embedded ? 'absolute inset-0' : 'fixed bottom-6 right-6 w-80 h-[480px]'} z-[9999999] flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg`}
+          style={{ pointerEvents: 'auto' }}
+          onClick={(e) => {
+            // Close modal if clicking on backdrop
+            if (e.target === e.currentTarget) {
+              setLeadOpen(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 w-full max-w-[300px] shadow-2xl relative" 
+            style={{ pointerEvents: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{leadMode === 'starter' ? 'Get Starter Pack' : 'Activate AI'}</h3>
               <p className="text-sm text-gray-600 mt-1">

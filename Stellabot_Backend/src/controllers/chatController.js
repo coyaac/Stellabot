@@ -111,8 +111,14 @@ exports.enableAiChat = (req, res) => {
 exports.handleAiChat = async (req, res) => {
     const { sessionId, message } = req.body;
 
+    // Tolerate serverless statelessness: create session if missing
+    if (!sessions[sessionId]) {
+        sessions[sessionId] = { guidedCount: 5, aiEnabled: true, chatHistory: [] };
+        console.warn(`Session ${sessionId} not found. Auto-creating with AI enabled (serverless tolerance).`);
+    }
+
     // Security: ensure AI is enabled for this session
-    if (!sessions[sessionId] || !sessions[sessionId].aiEnabled) {
+    if (!sessions[sessionId].aiEnabled) {
         return res.status(403).json({ error: "AI is not enabled for this session. Please provide your details first." });
     }
 
