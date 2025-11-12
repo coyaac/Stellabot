@@ -2,6 +2,7 @@
 
 // Import the guided flow map
 const guidedTour = require('../data/guidedTour');
+const { sanitizeLeadData, sanitizeChatMessage, logSafely } = require('../utils/sanitizer');
 
 // Google Generative AI (lazy init to avoid crashing server on startup)
 let genAI = null;
@@ -86,7 +87,10 @@ exports.handleGuidedChat = (req, res) => {
  * Enable AI after the user provides their details (POST /api/chat/enable-ai)
  */
 exports.enableAiChat = (req, res) => {
-    const { sessionId, name, email } = req.body;
+    const { sessionId, name, email, phone } = req.body;
+
+    // Sanitizar datos del lead
+    const sanitizedLead = sanitizeLeadData({ name, email, phone });
 
     // Tolerate serverless statelessness: create session if missing
     if (!sessions[sessionId]) {
@@ -94,10 +98,11 @@ exports.enableAiChat = (req, res) => {
     }
 
     // TODO: Integrate with Zoho and send Starter Pack
-    console.log(`Lead captured: ${name}, ${email}. Sending to Zoho and Starter Pack (simulated).`);
+    logSafely(`Lead captured: ${sanitizedLead.name}, ${sanitizedLead.email}`);
 
     // Mark AI as enabled for this session
     sessions[sessionId].aiEnabled = true;
+    sessions[sessionId].lead = sanitizedLead;
 
     res.status(200).json({
         message: "Great! AI has been activated. You can now chat freely."
@@ -111,10 +116,17 @@ exports.enableAiChat = (req, res) => {
 exports.handleAiChat = async (req, res) => {
     const { sessionId, message } = req.body;
 
+    // Sanitizar mensaje
+    const sanitizedMessage = sanitizeChatMessage(message);
+    
+    if (!sanitizedMessage || sanitizedMessage.length === 0) {
+        return res.status(400).json({ error: "Message cannot be empty." });
+    }
+
     // Tolerate serverless statelessness: create session if missing
     if (!sessions[sessionId]) {
         sessions[sessionId] = { guidedCount: 5, aiEnabled: true, chatHistory: [] };
-        console.warn(`Session ${sessionId} not found. Auto-creating with AI enabled (serverless tolerance).`);
+        logSafely(`Session ${sessionId} not found. Auto-creating with AI enabled (serverless tolerance).`);
     }
 
     // Security: ensure AI is enabled for this session
@@ -146,7 +158,7 @@ Always be polite and professional.
 
         // 2. Seleccionamos el modelo de Gemini.
         const model = client.getGenerativeModel({ 
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash-exp",
             systemInstruction: systemInstruction, // Le pasamos las instrucciones del sistema.
         });
 
@@ -155,10 +167,12 @@ Always be polite and professional.
             history: [],
         });
 
-        // 4. Enviamos el mensaje del usuario.
-        const result = await chat.sendMessage(message);
+        // 4. Enviamos el mensaje del usuario (ya sanitizado).
+        const result = await chat.sendMessage(sanitizedMessage);
         const response = await result.response;
         const text = response.text();
+
+        logSafely(`AI response generated for session ${sessionId}`);
 
         // --- END ---
         res.status(200).json({ reply: text });
@@ -175,19 +189,28 @@ Always be polite and professional.
  */
 exports.requestStarterPack = (req, res) => {
     const { sessionId, name, email, phone } = req.body || {};
+    
     if (!sessionId) {
         return res.status(400).json({ error: 'Session ID is required.' });
     }
+    
     if (!sessions[sessionId]) {
         sessions[sessionId] = { guidedCount: 0, aiEnabled: false, chatHistory: [] };
     }
+    
     if (!name || !email) {
         return res.status(400).json({ error: 'Name and email are required to receive the Starter Pack.' });
     }
+    
+    // Sanitizar datos del lead
+    const sanitizedLead = sanitizeLeadData({ name, email, phone });
+    
     // Store lead details
-    sessions[sessionId].lead = { name, email, phone };
+    sessions[sessionId].lead = sanitizedLead;
+    
     // TODO: Integrate with Zoho Desk and send Starter Pack email
-    console.log(`Starter Pack requested by ${name} <${email}> (phone: ${phone || 'N/A'})`);
+    logSafely(`Starter Pack requested by ${sanitizedLead.name} <${sanitizedLead.email}>`);
+    
     return res.status(200).json({ message: 'Starter Pack requested successfully. Please check your email shortly.' });
 };
 
